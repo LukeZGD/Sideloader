@@ -49,8 +49,9 @@ void sideloadFull(
     // if the current device is not registered as a development device for this account, do it!
     if (!devices.any!((device) => device.deviceNumber == deviceUdid)) {
         progressCallback(2 / STEP_COUNT, "Register the current device as a development device");
-        scope lockdown = new LockdowndClient(device, "sideloader.developer");
-        auto deviceName = lockdown.deviceName();
+        //scope lockdown = new LockdowndClient(device, "sideloader.developer");
+        //auto deviceName = lockdown.deviceName();
+        auto deviceName = "iDevice";
         developer.addDevice!iOS(team, deviceName, deviceUdid).unwrap();
     }
 
