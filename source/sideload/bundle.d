@@ -4,6 +4,7 @@ import std.algorithm.iteration;
 import std.array;
 import file = std.file;
 import std.path;
+import std.regex;
 
 import plist;
 
@@ -20,6 +21,8 @@ class Bundle {
         this.bundleDir = bundleDir;
         string infoPlistPath = bundleDir.buildPath("Info.plist");
         assertBundle(file.exists(infoPlistPath), "No Info.plist here: " ~ infoPlistPath);
+
+        fixBundleIdentifierAndName(infoPlistPath);
         appInfo = Plist.fromMemory(cast(ubyte[]) file.read(infoPlistPath)).dict();
 
         auto plugInsDir = bundleDir.buildPath("PlugIns");
@@ -36,6 +39,25 @@ class Bundle {
             _frameworks = [];
         }
         _libraries = file.dirEntries(bundleDir, file.SpanMode.breadth).filter!((f) => f.isFile && f.name[$ - ".dylib".length..$] == ".dylib").map!((f) => f.name[bundleDir.length + 1..$]).array;
+    }
+
+    private static void fixBundleIdentifierAndName(string infoPlistPath) {
+        auto info = Plist.fromMemory(cast(ubyte[]) file.read(infoPlistPath)).dict();
+        auto rValidChar = regex(r"^[a-zA-Z0-9.-]$");
+        auto rInvalidChar = regex(r"[^a-zA-Z0-9.-]");
+
+        auto needWrite = false;
+        if (!matchFirst(info["CFBundleIdentifier"].str().native(), rValidChar)) {
+            info["CFBundleIdentifier"].str().opAssign(info["CFBundleIdentifier"].str().native().replaceAll(rInvalidChar, ""));
+            needWrite = true;
+        }
+        if (!matchFirst(info["CFBundleName"].str().native(), rValidChar)) {
+            info["CFBundleName"].str().opAssign(info["CFBundleName"].str().native().replaceAll(rInvalidChar, ""));
+            needWrite = true;
+        }
+        if (needWrite) {
+            file.write(infoPlistPath, cast(ubyte[])info.toXml());
+        }
     }
 
     void bundleIdentifier(string id) => appInfo["CFBundleIdentifier"] = id.pl;
